@@ -126,8 +126,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       totalProgress += sectionProgress * weight;
     });
 
-    return Math.round(totalProgress * 100);
-  }, [sections]);
+    const progress = Math.round(totalProgress * 100);
+    
+    // Update customer status based on progress
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      let newStatus: ProjectStatus = 'pending';
+      if (progress === 100) newStatus = 'completed';
+      else if (progress > 0) newStatus = 'in-progress';
+      
+      if (customer.status !== newStatus) {
+        setCustomers(prev => 
+          prev.map(c => c.id === customerId ? { ...c, status: newStatus } : c)
+        );
+      }
+    }
+
+    return progress;
+  }, [sections, customers]);
 
   const addCustomer = useCallback((customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'progress' | 'status'>) => {
     const id = Date.now().toString();
