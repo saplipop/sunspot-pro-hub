@@ -69,9 +69,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         let role: "admin" | "employee" | null = null;
         
-        if (username === "admin" && password === "admin123") {
+        if (username === "admin@example.com" && password === "Admin@123") {
           role = "admin";
-        } else if (username === "employee" && password === "employee123") {
+        } else if (username === "employee@example.com" && password === "Employee@123") {
           role = "employee";
         }
         

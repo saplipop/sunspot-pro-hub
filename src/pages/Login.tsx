@@ -23,7 +23,7 @@ const Login = () => {
     try {
       const success = await login(form.username, form.password);
       if (!success) {
-        setError("Invalid username or password. Try 'admin'/'admin123' or 'employee'/'employee123'");
+        setError("Invalid email or password. Try 'admin@example.com'/'Admin@123' or 'employee@example.com'/'Employee@123'");
       }
     } catch (error) {
       setError("Login failed. Please try again.");
@@ -68,12 +68,12 @@ const Login = () => {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">Email</Label>
               <Input
                 id="username"
                 name="username"
-                type="text"
-                placeholder="admin or employee"
+                type="email"
+                placeholder="admin@example.com"
                 value={form.username}
                 onChange={handleChange}
               />
@@ -93,8 +93,8 @@ const Login = () => {
 
             <div className="text-sm text-muted-foreground text-center">
               <p>Demo accounts:</p>
-              <p className="mt-1">Admin: admin / admin123</p>
-              <p>Employee: employee / employee123</p>
+              <p className="mt-1">Admin: admin@example.com / Admin@123</p>
+              <p>Employee: employee@example.com / Employee@123</p>
             </div>
 
             <Button type="submit" className="w-full">
