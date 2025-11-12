@@ -4,7 +4,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Zap } from 'lucide-react';
+import { ArrowRight, Zap, Pencil } from 'lucide-react';
+import EditCustomerDialog from './EditCustomerDialog';
+import { useState } from 'react';
 
 interface CustomerListProps {
   customers: Customer[];
@@ -12,6 +14,7 @@ interface CustomerListProps {
 
 const CustomerList = ({ customers }: CustomerListProps) => {
   const navigate = useNavigate();
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -51,12 +54,14 @@ const CustomerList = ({ customers }: CustomerListProps) => {
       {customers.map((customer) => (
         <Card
           key={customer.id}
-          className="hover:shadow-md transition-all cursor-pointer border-l-4 border-l-primary"
-          onClick={() => navigate(`/customer/${customer.id}`)}
+          className="hover:shadow-md transition-all border-l-4 border-l-primary"
         >
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex-1 space-y-3">
+              <div 
+                className="flex-1 space-y-3 cursor-pointer"
+                onClick={() => navigate(`/customer/${customer.id}`)}
+              >
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-lg font-semibold">{customer.name}</h3>
@@ -95,13 +100,36 @@ const CustomerList = ({ customers }: CustomerListProps) => {
                 </div>
               </div>
 
-              <Button variant="ghost" size="icon" className="shrink-0">
-                <ArrowRight className="h-5 w-5" />
-              </Button>
+              <div className="flex gap-2 shrink-0">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingCustomer(customer);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => navigate(`/customer/${customer.id}`)}
+                >
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
       ))}
+      {editingCustomer && (
+        <EditCustomerDialog 
+          customer={editingCustomer} 
+          open={!!editingCustomer}
+          onOpenChange={(open) => !open && setEditingCustomer(null)}
+        />
+      )}
     </div>
   );
 };
