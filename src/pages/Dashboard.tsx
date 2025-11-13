@@ -98,13 +98,15 @@ const Dashboard = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-heading font-bold text-foreground mb-2">Dashboard</h1>
+          <h1 className="text-4xl font-heading font-bold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent mb-2">
+            Dashboard
+          </h1>
           <p className="text-muted-foreground text-lg">
             Welcome back, <span className="font-semibold text-foreground">{user?.username}</span> • {user?.role}
           </p>
         </div>
         {isAdmin && (
-          <Button onClick={() => navigate("/customers")} className="shadow-md" size="lg">
+          <Button onClick={() => navigate("/customers")} className="shadow-lg hover:shadow-xl transition-all" size="lg">
             <Users className="h-4 w-4 mr-2" />
             Manage Customers
           </Button>
@@ -254,14 +256,14 @@ const Dashboard = () => {
               </p>
             ) : (
               filteredCustomers.map((customer) => (
-                <div
+                 <div
                   key={customer.id}
-                  className="flex items-center justify-between p-5 rounded-xl border-2 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group"
+                  className="flex items-center justify-between p-5 rounded-xl border-2 border-border hover:border-primary/50 hover:shadow-lg transition-all duration-300 cursor-pointer group hover:-translate-y-0.5"
                   onClick={() => navigate(`/customers/${customer.id}`)}
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
-                      <h3 className="font-heading font-semibold text-lg">{customer.name}</h3>
+                      <h3 className="font-heading font-semibold text-lg group-hover:text-primary transition-colors">{customer.name}</h3>
                       {getProgressBadge(customer.progress)}
                     </div>
                     <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
