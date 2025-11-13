@@ -9,11 +9,11 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   const getStatusStyles = () => {
     switch (status) {
       case "completed":
-        return "bg-success text-success-foreground";
+        return "bg-success text-success-foreground hover:bg-success/90 shadow-sm";
       case "in_progress":
-        return "bg-warning text-warning-foreground";
+        return "bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm";
       case "pending":
-        return "bg-destructive text-destructive-foreground";
+        return "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm";
       default:
         return "";
     }
@@ -22,15 +22,15 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   const getStatusLabel = () => {
     switch (status) {
       case "completed":
-        return "Completed";
+        return "✓ Completed";
       case "in_progress":
-        return "In Progress";
+        return "◷ In Progress";
       case "pending":
-        return "Pending";
+        return "○ Pending";
       default:
         return status;
     }
   };
 
-  return <Badge className={getStatusStyles()}>{getStatusLabel()}</Badge>;
+  return <Badge className={`${getStatusStyles()} transition-all duration-200 font-medium`}>{getStatusLabel()}</Badge>;
 };

@@ -79,24 +79,28 @@ class ApiDataManager {
   }
 
   // Employee operations
-  async getEmployees(params?: any): Promise<Employee[]> {
-    return await employeeService.getAll(params);
+  async getEmployees(): Promise<Employee[]> {
+    return await employeeService.getAll();
   }
 
   async getEmployee(id: string): Promise<Employee | null> {
-    return await employeeService.getById(id);
+    const employees = await employeeService.getAll();
+    return employees.find(emp => emp.id === id) || null;
   }
 
   async addEmployee(employee: Employee): Promise<Employee> {
-    return await employeeService.create(employee);
+    // TODO: Implement when backend endpoint is available
+    throw new Error('Add employee not implemented');
   }
 
   async updateEmployee(employee: Employee): Promise<Employee> {
-    return await employeeService.update(employee.id, employee);
+    // TODO: Implement when backend endpoint is available
+    throw new Error('Update employee not implemented');
   }
 
   async deleteEmployee(id: string): Promise<void> {
-    await employeeService.delete(id);
+    // TODO: Implement when backend endpoint is available
+    throw new Error('Delete employee not implemented');
   }
 }
 
