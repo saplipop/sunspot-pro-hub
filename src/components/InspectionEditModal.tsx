@@ -64,9 +64,12 @@ export const InspectionEditModal = ({ inspection, open, onOpenChange, onSave }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" aria-describedby="inspection-form-description">
         <DialogHeader>
           <DialogTitle>Edit Inspection</DialogTitle>
+          <p id="inspection-form-description" className="sr-only">
+            Update inspection submission status, QC approval, and remarks
+          </p>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">

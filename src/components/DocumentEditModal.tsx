@@ -69,6 +69,27 @@ export const DocumentEditModal = ({ document, open, onOpenChange, onSave }: Docu
   }, [formData.uploaded, formData.fileId, formData.verified, manualStatusOverride]);
 
   const handleFileUpload = (fileId: string) => {
+    // Validate document number before allowing upload
+    if (!formData.documentNumber?.trim()) {
+      toast({
+        title: "Document Number Required",
+        description: "Please enter a document number before uploading a file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate document number format
+    const validation = validateDocumentNumber(formData.name, formData.documentNumber);
+    if (!validation.valid) {
+      toast({
+        title: "Invalid Document Number",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setFormData({
       ...formData,
       fileId,
@@ -145,9 +166,12 @@ export const DocumentEditModal = ({ document, open, onOpenChange, onSave }: Docu
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby="document-form-description">
         <DialogHeader>
           <DialogTitle>Edit Document - {formData.name}</DialogTitle>
+          <p id="document-form-description" className="sr-only">
+            Edit document details, upload files, and update verification status
+          </p>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           {/* Document Number Field */}

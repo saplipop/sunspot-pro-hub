@@ -67,9 +67,12 @@ export const EmployeeModal = ({ open, onOpenChange, onSave, employee }: Employee
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" aria-describedby="employee-form-description">
         <DialogHeader>
           <DialogTitle>{employee ? "Edit Employee" : "Add New Employee"}</DialogTitle>
+          <p id="employee-form-description" className="sr-only">
+            {employee ? "Edit employee information and customer assignments" : "Add a new employee with their details and assign customers"}
+          </p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">

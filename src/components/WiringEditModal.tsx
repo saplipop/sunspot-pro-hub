@@ -50,9 +50,12 @@ export const WiringEditModal = ({ wiring, open, onOpenChange, onSave }: WiringEd
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" aria-describedby="wiring-form-description">
         <DialogHeader>
           <DialogTitle>Edit Wiring Details</DialogTitle>
+          <p id="wiring-form-description" className="sr-only">
+            Update wiring installation details, technician information, and component status
+          </p>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           {formData.technicianId && (

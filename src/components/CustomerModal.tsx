@@ -129,9 +129,12 @@ export const CustomerModal = ({ open, onOpenChange, customer, onSave }: Customer
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby="customer-form-description">
           <DialogHeader>
             <DialogTitle>{customer ? "Edit Customer" : "Add New Customer"}</DialogTitle>
+            <p id="customer-form-description" className="sr-only">
+              {customer ? "Edit customer information including name, contact details, and system specifications" : "Add a new customer with their details and solar system information"}
+            </p>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">

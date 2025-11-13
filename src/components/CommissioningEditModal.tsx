@@ -114,9 +114,12 @@ export const CommissioningEditModal = ({ commissioning, open, onOpenChange, onSa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby="commissioning-form-description">
         <DialogHeader>
           <DialogTitle>Edit Commissioning Details</DialogTitle>
+          <p id="commissioning-form-description" className="sr-only">
+            Update commissioning dates, subsidy information, and view auto-fetched project data
+          </p>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           {/* Auto-Fetched Project Summary */}

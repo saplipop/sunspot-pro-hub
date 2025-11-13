@@ -12,5 +12,17 @@ export interface IOrder {
   totalAmount: number;
   status: OrderStatus;
   progress: number;
+  assignedTo? : IdNameDto;
   isDeleted: boolean;
+}
+
+export interface IdNameDto {
+  id: string;
+  name: string;
+}
+
+export interface AssignOrderDto {
+  orderIds: number[];
+  employeeId: string;
+  removeUnassigned?: boolean;
 }

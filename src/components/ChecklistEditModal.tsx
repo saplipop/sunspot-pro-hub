@@ -58,9 +58,12 @@ export const ChecklistEditModal = ({ item, open, onOpenChange, onSave }: Checkli
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" aria-describedby="checklist-form-description">
         <DialogHeader>
           <DialogTitle>Edit Checklist Item</DialogTitle>
+          <p id="checklist-form-description" className="sr-only">
+            Update checklist item status, dates, and remarks
+          </p>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
