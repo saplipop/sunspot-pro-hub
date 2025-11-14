@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Plus, Download, Filter, Trash2 } from "lucide-react";
+import { Search, Plus, Download, Filter, Trash2, Edit, Eye } from "lucide-react";
 import { CustomerModal } from "@/components/CustomerModal";
 import { ExcelImport } from "@/components/ExcelImport";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ import { storage, STORAGE_CHANGE_EVENT } from "@/lib/storage";
 import { calculateOverallProgress } from "@/lib/progressCalculator";
 import { dataManager } from "@/lib/dataManager";
 import { exportToExcel } from "@/utils/exportUtils";
+import { searchCustomers, filterCustomersByStatus, sortCustomers, SortOption } from "@/utils/sortingUtils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +36,7 @@ import {
 
 const Customers = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<string>("name");
+  const [sortBy, setSortBy] = useState<SortOption>("name");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>();
@@ -81,38 +82,10 @@ const Customers = () => {
     progress: calculateOverallProgress(customer.id),
   }));
 
-  // Apply filters
-  let filteredCustomers = customersWithProgress.filter((customer) => {
-    const matchesSearch =
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.consumerNumber.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus =
-      filterStatus === "all" ||
-      (filterStatus === "pending" && customer.progress === 0) ||
-      (filterStatus === "in_progress" && customer.progress > 0 && customer.progress < 100) ||
-      (filterStatus === "completed" && customer.progress === 100);
-
-    return matchesSearch && matchesStatus;
-  });
-
-  // Sort customers
-  filteredCustomers = [...filteredCustomers].sort((a, b) => {
-    switch (sortBy) {
-      case "name":
-        return a.name.localeCompare(b.name);
-      case "date":
-        return new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime();
-      case "capacity":
-        return b.systemCapacity - a.systemCapacity;
-      case "amount":
-        return b.orderAmount - a.orderAmount;
-      case "progress":
-        return b.progress - a.progress;
-      default:
-        return 0;
-    }
-  });
+  // Apply filters using utility functions
+  let filteredCustomers = searchCustomers(customersWithProgress, searchTerm);
+  filteredCustomers = filterCustomersByStatus(filteredCustomers, filterStatus);
+  filteredCustomers = sortCustomers(filteredCustomers, sortBy);
 
   const handleSaveCustomer = (customerData: Partial<Customer>) => {
     try {
@@ -197,20 +170,22 @@ const Customers = () => {
     <div className="space-y-8 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-heading font-bold text-foreground mb-2">Customers</h1>
+          <h1 className="text-4xl font-heading font-bold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent mb-2">
+            Customers
+          </h1>
           <p className="text-muted-foreground text-lg">
-            Manage all customer information • {filteredCustomers.length} total
+            Manage all customer information • {filteredCustomers.length} of {customers.length} customers
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={handleExport} className="shadow-sm">
+          <Button variant="outline" onClick={handleExport} className="shadow-sm hover:shadow-md transition-all">
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
           {isAdmin && (
             <>
               <ExcelImport onImportComplete={handleImportComplete} />
-              <Button onClick={() => setModalOpen(true)} className="shadow-md">
+              <Button onClick={() => { setSelectedCustomer(undefined); setModalOpen(true); }} className="shadow-md hover:shadow-lg transition-all">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Customer
               </Button>
@@ -245,7 +220,7 @@ const Customers = () => {
               </SelectContent>
             </Select>
 
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
               <SelectTrigger>
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>

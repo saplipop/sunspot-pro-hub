@@ -16,6 +16,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Customer } from "@/data/mockData";
+import { customerFormSchema } from "@/lib/validators/customerValidation";
+import { z } from "zod";
 
 interface CustomerModalProps {
   open: boolean;
@@ -60,40 +62,44 @@ export const CustomerModal = ({ open, onOpenChange, customer, onSave }: Customer
   }, [customer, open]);
 
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.name?.trim()) {
-      newErrors.name = "Name is required";
+    try {
+      // Only validate fields that exist on Customer interface
+      const validationData = {
+        name: formData.name || "",
+        consumerNumber: formData.consumerNumber || "",
+        mobile: formData.mobile || "",
+        address: formData.address || "",
+        systemCapacity: formData.systemCapacity || 0,
+        orderAmount: formData.orderAmount || 0,
+        orderDate: formData.orderDate || "",
+      };
+      
+      // Use pick to only validate relevant fields
+      const schema = customerFormSchema.pick({
+        name: true,
+        consumerNumber: true,
+        mobile: true,
+        address: true,
+        systemCapacity: true,
+        orderAmount: true,
+        orderDate: true,
+      });
+      
+      schema.parse(validationData);
+      setErrors({});
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const newErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            newErrors[err.path[0] as string] = err.message;
+          }
+        });
+        setErrors(newErrors);
+      }
+      return false;
     }
-
-    if (!formData.consumerNumber?.trim()) {
-      newErrors.consumerNumber = "Consumer number is required";
-    }
-
-    if (!formData.mobile?.trim()) {
-      newErrors.mobile = "Mobile number is required";
-    } else if (!/^[0-9]{10}$/.test(formData.mobile)) {
-      newErrors.mobile = "Mobile number must be 10 digits";
-    }
-
-    if (!formData.address?.trim()) {
-      newErrors.address = "Address is required";
-    }
-
-    if (!formData.systemCapacity || formData.systemCapacity <= 0) {
-      newErrors.systemCapacity = "System capacity must be greater than 0";
-    }
-
-    if (!formData.orderAmount || formData.orderAmount <= 0) {
-      newErrors.orderAmount = "Order amount must be greater than 0";
-    }
-
-    if (!formData.orderDate) {
-      newErrors.orderDate = "Order date is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
