@@ -1,31 +1,36 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusChart } from "@/components/StatusChart";
 import { InspectionDeadlineChecker } from "@/components/InspectionDeadlineChecker";
+import { DashboardFilters } from "@/components/DashboardFilters";
 import {
   Users,
   FileWarning,
   Clock,
   CheckCircle,
-  Search,
-  UserCog,
   Activity,
   TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { storage, STORAGE_CHANGE_EVENT } from "@/lib/storage";
 import { calculateOverallProgress } from "@/lib/progressCalculator";
 import { Customer, ActivityLog } from "@/data/mockData";
+import { searchCustomers, filterCustomersByStatus, sortCustomers, CustomerWithProgress } from "@/utils/sortingUtils";
+import { isWithinInterval } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [activities, setActivities] = useState<ActivityLog[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [activeFilter, setActiveFilter] = useState<"all" | "pending" | "in_progress" | "completed">("all");
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [sortBy] = useState<"progress">("progress");
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -49,14 +54,30 @@ const Dashboard = () => {
   const loadData = () => {
     setCustomers(storage.getCustomers());
     setActivities(storage.getActivities().slice(0, 10));
-    setRefreshKey((prev) => prev + 1);
   };
 
   // Calculate stats
-  const customersWithProgress = customers.map((customer) => ({
+  const customersWithProgress: CustomerWithProgress[] = customers.map((customer) => ({
     ...customer,
     progress: calculateOverallProgress(customer.id),
   }));
+
+  // Apply filters
+  let filteredCustomers = searchCustomers(customersWithProgress, searchTerm);
+  filteredCustomers = filterCustomersByStatus(filteredCustomers, activeFilter);
+  
+  // Apply date range filter
+  if (dateRange.from) {
+    filteredCustomers = filteredCustomers.filter((customer) => {
+      const orderDate = new Date(customer.orderDate);
+      if (dateRange.to) {
+        return isWithinInterval(orderDate, { start: dateRange.from!, end: dateRange.to });
+      }
+      return orderDate >= dateRange.from!;
+    });
+  }
+  
+  filteredCustomers = sortCustomers(filteredCustomers, sortBy);
 
   const totalCustomers = customers.length;
   const activeProjects = customersWithProgress.filter(
@@ -69,15 +90,9 @@ const Dashboard = () => {
   const allDocuments = storage.getDocuments();
   const pendingDocuments = allDocuments.filter((d) => d.status === "pending").length;
 
-  // Total employees
-  const totalEmployees = storage.getEmployees().length;
-
-  // Filter customers for search
-  const filteredCustomers = customersWithProgress.filter(
-    (customer) =>
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.consumerNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Stats comparison (mock data for trend indicators)
+  const prevMonthCustomers = totalCustomers - 3; // Mock previous data
+  const customerGrowth = totalCustomers - prevMonthCustomers;
 
   const getProgressColor = (progress: number) => {
     if (progress === 100) return "bg-success";
@@ -115,59 +130,87 @@ const Dashboard = () => {
 
       <InspectionDeadlineChecker />
 
+      {/* Dashboard Filters */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="font-heading">Filter Projects</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DashboardFilters
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            activeFilter={activeFilter}
+            onFilterChange={setActiveFilter}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
+        </CardContent>
+      </Card>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="hover-lift cursor-pointer border-2 hover:border-primary/50" onClick={() => navigate("/customers")}>
+        <Card className="hover-lift cursor-pointer border-2 hover:border-primary/50 transition-all duration-300" onClick={() => navigate("/customers")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Customers</CardTitle>
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Users className="h-5 w-5 text-primary" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+              <Users className="h-6 w-6 text-primary" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-heading font-bold text-foreground">{totalCustomers}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {activeProjects} active projects
-            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <div className={cn(
+                "flex items-center text-xs font-medium",
+                customerGrowth >= 0 ? "text-success" : "text-destructive"
+              )}>
+                {customerGrowth >= 0 ? (
+                  <ArrowUpRight className="h-3 w-3 mr-1" />
+                ) : (
+                  <ArrowDownRight className="h-3 w-3 mr-1" />
+                )}
+                {Math.abs(customerGrowth)}
+              </div>
+              <p className="text-xs text-muted-foreground">from last month</p>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="hover-lift cursor-pointer border-2 hover:border-warning/50" onClick={() => navigate("/customers")}>
+        <Card className="hover-lift cursor-pointer border-2 hover:border-warning/50 transition-all duration-300" onClick={() => navigate("/customers")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Active Projects</CardTitle>
-            <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center">
-              <Clock className="h-5 w-5 text-warning" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-warning/20 to-warning/10 flex items-center justify-center">
+              <Clock className="h-6 w-6 text-warning" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-heading font-bold text-warning">{activeProjects}</div>
-            <p className="text-xs text-muted-foreground mt-1">Currently in progress</p>
+            <p className="text-xs text-muted-foreground mt-2">Currently in progress</p>
           </CardContent>
         </Card>
 
-        <Card className="hover-lift cursor-pointer border-2 hover:border-success/50" onClick={() => navigate("/customers")}>
+        <Card className="hover-lift cursor-pointer border-2 hover:border-success/50 transition-all duration-300" onClick={() => navigate("/customers")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Completed</CardTitle>
-            <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
-              <CheckCircle className="h-5 w-5 text-success" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-success/20 to-success/10 flex items-center justify-center">
+              <CheckCircle className="h-6 w-6 text-success" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-heading font-bold text-success">{completedProjects}</div>
-            <p className="text-xs text-muted-foreground mt-1">Successfully completed</p>
+            <p className="text-xs text-muted-foreground mt-2">Successfully completed</p>
           </CardContent>
         </Card>
 
-        <Card className="hover-lift cursor-pointer border-2 hover:border-destructive/50" onClick={() => navigate("/documents")}>
+        <Card className="hover-lift cursor-pointer border-2 hover:border-destructive/50 transition-all duration-300" onClick={() => navigate("/documents")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Pending Documents</CardTitle>
-            <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
-              <FileWarning className="h-5 w-5 text-destructive" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-destructive/20 to-destructive/10 flex items-center justify-center">
+              <FileWarning className="h-6 w-6 text-destructive" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-heading font-bold text-destructive">{pendingDocuments}</div>
-            <p className="text-xs text-muted-foreground mt-1">Awaiting upload</p>
+            <p className="text-xs text-muted-foreground mt-2">Awaiting upload</p>
           </CardContent>
         </Card>
       </div>
@@ -235,25 +278,20 @@ const Dashboard = () => {
       {/* Customer List */}
       <Card className="shadow-card">
         <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <CardTitle className="font-heading text-2xl">All Customers</CardTitle>
-            <div className="relative w-full md:w-80">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search customers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+          <div className="flex items-center justify-between">
+            <CardTitle className="font-heading text-2xl">
+              {activeFilter === "all" ? "All" : activeFilter === "pending" ? "Pending" : activeFilter === "in_progress" ? "In Progress" : "Completed"} Customers
+              <span className="text-muted-foreground ml-2">({filteredCustomers.length})</span>
+            </CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {filteredCustomers.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                No customers found
-              </p>
+              <div className="text-center py-12">
+                <p className="text-muted-foreground text-lg mb-2">No customers found</p>
+                <p className="text-sm text-muted-foreground">Try adjusting your filters or search term</p>
+              </div>
             ) : (
               filteredCustomers.map((customer) => (
                  <div
