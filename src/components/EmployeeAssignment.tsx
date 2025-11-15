@@ -75,17 +75,33 @@ export function EmployeeAssignment({
       return;
     }
 
+    const employee = activeEmployees.find((emp) => emp.id === selectedEmployee);
+    if (!employee) return;
+
+    // Use centralized assignment manager for interconnected updates
+    import("@/lib/employeeAssignmentManager").then(({ employeeAssignmentManager }) => {
+      employeeAssignmentManager.assignEmployee({
+        customerId,
+        employeeId: selectedEmployee,
+        employeeName: employee.name,
+        sections: {
+          customer: true,
+          wiring: true,
+          inspection: true,
+          commissioning: true,
+          checklist: true,
+        },
+      });
+    });
+
     onAssign(selectedEmployee);
 
-    const employee = activeEmployees.find((emp) => emp.id === selectedEmployee);
     toast({
-      title: "Employee Assigned",
-      description: `${employee?.name} has been assigned to ${customerName}`,
+      title: "Employee Assigned & Interconnected",
+      description: `${employee.name} assigned to ${customerName} and all related sections automatically updated`,
     });
 
     setOpen(false);
-    
-    // Optionally open task creation modal
     setTaskModalOpen(true);
   };
 

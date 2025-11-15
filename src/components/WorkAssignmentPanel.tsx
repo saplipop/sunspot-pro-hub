@@ -108,6 +108,32 @@ export function WorkAssignmentPanel({ customerId, customerName, onWorkAssign }: 
 
     if (!selectedWork) return;
 
+    const employee = employees.find(e => e.id === selectedEmployee);
+    if (!employee) return;
+
+    // Use centralized assignment manager for interconnected updates
+    import("@/lib/employeeAssignmentManager").then(({ employeeAssignmentManager }) => {
+      const sections = {
+        customer: true,
+        wiring: selectedWork.type === "wiring",
+        inspection: selectedWork.type === "inspection",
+        commissioning: selectedWork.type === "commissioning",
+        checklist: false,
+      };
+
+      employeeAssignmentManager.assignEmployee({
+        customerId,
+        employeeId: selectedEmployee,
+        employeeName: employee.name,
+        sections,
+        dates: {
+          start: startDate,
+          end: endDate,
+        },
+        notes: assignmentNotes,
+      });
+    });
+
     onWorkAssign(
       selectedWork.type,
       selectedEmployee,
@@ -115,10 +141,9 @@ export function WorkAssignmentPanel({ customerId, customerName, onWorkAssign }: 
       assignmentNotes
     );
 
-    const employee = employees.find(e => e.id === selectedEmployee);
     toast({
-      title: "Work Assigned",
-      description: `${selectedWork.title} assigned to ${employee?.name}`,
+      title: "Work Assigned & Interconnected",
+      description: `${selectedWork.title} assigned to ${employee?.name}. All related sections updated automatically.`,
     });
 
     setAssignDialog(false);

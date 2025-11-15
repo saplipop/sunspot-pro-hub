@@ -23,12 +23,15 @@ import { useToast } from "@/hooks/use-toast";
 import { DocumentTabs } from "@/components/DocumentTabs";
 import { ProgressPanel } from "@/components/ProgressPanel";
 import { EmployeeAssignment } from "@/components/EmployeeAssignment";
+import { AssignmentStatusIndicator } from "@/components/AssignmentStatusIndicator";
 import { ChecklistEditModal } from "@/components/ChecklistEditModal";
 import { WiringEditModal } from "@/components/WiringEditModal";
 import { InspectionEditModal } from "@/components/InspectionEditModal";
 import { CommissioningEditModal } from "@/components/CommissioningEditModal";
 import { AdvisingModal } from "@/components/AdvisingModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEmployeeSync } from "@/hooks/useEmployeeSync";
+import { useAssignmentNotifications } from "@/hooks/useAssignmentNotifications";
 import {
   Table,
   TableBody,
@@ -44,6 +47,12 @@ const CustomerDetail = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [customer, setCustomer] = useState(id ? storage.getCustomer(id) : undefined);
+  
+  // Real-time employee assignment sync
+  const assignmentStatus = useEmployeeSync(id || "");
+  
+  // Real-time assignment notifications
+  useAssignmentNotifications(id || "", true);
 
   // State management
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -300,6 +309,9 @@ const CustomerDetail = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Real-Time Assignment Status */}
+      {id && <AssignmentStatusIndicator customerId={id} />}
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
