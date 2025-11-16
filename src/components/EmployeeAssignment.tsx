@@ -78,7 +78,27 @@ export function EmployeeAssignment({
     const employee = activeEmployees.find((emp) => emp.id === selectedEmployee);
     if (!employee) return;
 
-    // Use centralized assignment manager for interconnected updates
+    // Create task with wiring interconnection
+    import("@/lib/taskWiringSync").then(({ taskWiringSyncManager }) => {
+      const result = taskWiringSyncManager.createTaskWithWiring({
+        customerId,
+        employeeId: selectedEmployee,
+        employeeName: employee.name,
+        taskTitle: `Installation for ${customerName}`,
+        taskDescription: "Complete solar panel installation and wiring",
+        startDate: new Date().toISOString().split("T")[0],
+        endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+        priority: "high",
+        role: "technician",
+      });
+
+      toast({
+        title: "Employee Assigned & Task Created",
+        description: `${employee.name} assigned with interconnected wiring task`,
+      });
+    });
+
+    // Also use legacy assignment manager for backward compatibility
     import("@/lib/employeeAssignmentManager").then(({ employeeAssignmentManager }) => {
       employeeAssignmentManager.assignEmployee({
         customerId,
@@ -95,11 +115,6 @@ export function EmployeeAssignment({
     });
 
     onAssign(selectedEmployee);
-
-    toast({
-      title: "Employee Assigned & Interconnected",
-      description: `${employee.name} assigned to ${customerName} and all related sections automatically updated`,
-    });
 
     setOpen(false);
     setTaskModalOpen(true);

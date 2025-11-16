@@ -32,6 +32,48 @@ export const ChecklistEditModal = ({ item, open, onOpenChange, onSave }: Checkli
   );
 
   const handleSave = () => {
+    // Check if trying to mark as completed
+    if (formData.status === "completed" && item?.status !== "completed") {
+      import("@/lib/taskWiringSync").then(({ taskWiringSyncManager }) => {
+        const validation = taskWiringSyncManager.canCompleteChecklist(formData);
+        
+        if (!validation.allowed) {
+          toast({
+            title: "Cannot Complete Yet",
+            description: validation.reason,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Proceed with completion
+        const updatedItem = {
+          ...formData,
+          doneBy: user?.username || "Admin",
+          date: new Date().toISOString().split("T")[0],
+        };
+        
+        onSave(updatedItem);
+        
+        logActivity(
+          user?.username || "Admin",
+          user?.username || "admin",
+          formData.customerId,
+          "Checklist",
+          `Completed ${formData.task}`
+        );
+
+        toast({
+          title: "Checklist Completed",
+          description: `${formData.task} marked as completed`,
+        });
+
+        onOpenChange(false);
+      });
+      return;
+    }
+
+    // Regular update (not completion)
     const updatedItem = {
       ...formData,
       doneBy: user?.username || "Admin",

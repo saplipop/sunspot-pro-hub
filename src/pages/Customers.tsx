@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Plus, Download, Filter, Trash2, Edit, Eye } from "lucide-react";
 import { CustomerModal } from "@/components/CustomerModal";
 import { ExcelImport } from "@/components/ExcelImport";
+import { AdvancedExcelImportExport } from "@/components/AdvancedExcelImportExport";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -185,6 +186,7 @@ const Customers = () => {
           {isAdmin && (
             <>
               <ExcelImport onImportComplete={handleImportComplete} />
+              <AdvancedExcelImportExport />
               <Button onClick={() => { setSelectedCustomer(undefined); setModalOpen(true); }} className="shadow-md hover:shadow-lg transition-all">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Customer

@@ -32,6 +32,23 @@ export const WiringEditModal = ({ wiring, open, onOpenChange, onSave }: WiringEd
   const handleSave = () => {
     onSave(formData);
     
+    // Sync changes back to task if linked
+    if (formData.technicianId) {
+      import("@/lib/taskWiringSync").then(({ taskWiringSyncManager }) => {
+        taskWiringSyncManager.updateWiringAndSync(formData.customerId, formData);
+      });
+    }
+
+    // Auto-complete checklist if wiring completed
+    if (formData.status === "completed" && wiring?.status !== "completed") {
+      import("@/lib/taskWiringSync").then(({ taskWiringSyncManager }) => {
+        taskWiringSyncManager.completeWiringTask(
+          formData.customerId,
+          formData.technicianName || user?.username || "Admin"
+        );
+      });
+    }
+    
     logActivity(
       user?.username || "Admin",
       user?.username || "admin",
@@ -42,7 +59,9 @@ export const WiringEditModal = ({ wiring, open, onOpenChange, onSave }: WiringEd
 
     toast({
       title: "Wiring Details Updated",
-      description: "Wiring information has been updated successfully",
+      description: formData.status === "completed" 
+        ? "Wiring completed - Checklist items auto-completed" 
+        : "Wiring information has been updated successfully",
     });
 
     onOpenChange(false);
