@@ -1,14 +1,17 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Shield, Eye, EyeOff, Loader2, GraduationCap } from "lucide-react";
 
 export default function Auth() {
+  const [params] = useSearchParams();
+  const initialRole = params.get("role") === "admin" ? "admin" : "student";
+  const [loginRole, setLoginRole] = useState<"student" | "admin">(initialRole);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -20,15 +23,35 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      navigate("/dashboard");
+
+      // Verify the account matches the selected login role
+      if (data.user) {
+        const { data: roleRow } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id)
+          .single();
+        const actualRole = (roleRow?.role as "student" | "admin") ?? "student";
+        if (actualRole !== loginRole) {
+          await supabase.auth.signOut();
+          throw new Error(
+            loginRole === "admin"
+              ? "This account is not an admin. Use Student Sign In instead."
+              : "This is an admin account. Use Admin Sign In instead.",
+          );
+        }
+        navigate(actualRole === "admin" ? "/admin" : "/dashboard");
+      }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
+
+  const isAdmin = loginRole === "admin";
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -45,10 +68,38 @@ export default function Auth() {
 
         <Card className="glass-card">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl">Welcome Back</CardTitle>
-            <CardDescription>Sign in with your credentials</CardDescription>
+            <CardTitle className="text-xl">
+              {isAdmin ? "Admin Sign In" : "Student Sign In"}
+            </CardTitle>
+            <CardDescription>
+              {isAdmin
+                ? "Restricted access for exam administrators"
+                : "Use credentials provided by your administrator"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Role toggle */}
+            <div className="grid grid-cols-2 gap-2 mb-6 p-1 rounded-lg bg-muted/50">
+              <button
+                type="button"
+                onClick={() => setLoginRole("student")}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                  !isAdmin ? "gradient-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <GraduationCap className="h-4 w-4" /> Student
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginRole("admin")}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                  isAdmin ? "gradient-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Shield className="h-4 w-4" /> Admin
+              </button>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -65,11 +116,13 @@ export default function Auth() {
               </div>
               <Button type="submit" className="w-full gradient-primary text-primary-foreground" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Sign In
+                Sign In as {isAdmin ? "Admin" : "Student"}
               </Button>
             </form>
             <p className="mt-4 text-center text-xs text-muted-foreground">
-              Contact your administrator if you don't have credentials.
+              {isAdmin
+                ? "Admin accounts are provisioned manually."
+                : "Student signup is disabled. Contact your administrator for credentials."}
             </p>
           </CardContent>
         </Card>
