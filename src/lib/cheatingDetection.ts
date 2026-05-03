@@ -82,10 +82,64 @@ export function setupAudioMonitoring(onViolation: (v: Violation) => void) {
 }
 
 // MediaPipe Face Mesh based eye/gaze detection
-export function setupFaceMeshDetection(video: HTMLVideoElement, onViolation: (v: Violation) => void) {
+export function setupFaceMeshDetection(
+  video: HTMLVideoElement,
+  onViolation: (v: Violation) => void,
+  onSuspiciousChange?: (suspicious: boolean) => void,
+) {
   let lastAlert = 0;
   let noFaceCount = 0;
   let running = true;
+
+  // Sustained-gaze tracking: only fire a violation when the user has been
+  // looking away/left/right/down for >= SUSTAIN_MS milliseconds.
+  const SUSTAIN_MS = 2500;
+  let deviationType: string | null = null;
+  let deviationStart = 0;
+  let suspiciousActive = false;
+  const setSuspicious = (s: boolean) => {
+    if (s !== suspiciousActive) {
+      suspiciousActive = s;
+      onSuspiciousChange?.(s);
+    }
+  };
+  const descriptions: Record<string, string> = {
+    looking_left: "Student looked to the left for too long",
+    looking_right: "Student looked to the right for too long",
+    looking_down: "Student looked down for too long (possible phone use)",
+    looking_away: "Student's head was turned away from the screen",
+  };
+  // Override severity for sustained gaze violations to +5 per spec
+  const SUSTAINED_SEVERITY = 5;
+
+  const trackDeviation = (type: string | null) => {
+    const now = Date.now();
+    if (!type) {
+      // Back on screen — clear deviation + suspicious state
+      deviationType = null;
+      deviationStart = 0;
+      setSuspicious(false);
+      return;
+    }
+    if (deviationType !== type) {
+      deviationType = type;
+      deviationStart = now;
+      setSuspicious(true);
+      return;
+    }
+    setSuspicious(true);
+    if (now - deviationStart >= SUSTAIN_MS && now - lastAlert > 3000) {
+      lastAlert = now;
+      // Reset start so we don't spam — require another full sustain to refire
+      deviationStart = now;
+      onViolation({
+        type,
+        severity: SUSTAINED_SEVERITY,
+        description: descriptions[type] || "Sustained gaze deviation detected",
+        timestamp: new Date(),
+      });
+    }
+  };
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d")!;
@@ -140,13 +194,13 @@ export function setupFaceMeshDetection(video: HTMLVideoElement, onViolation: (v:
 
   const processResults = (results: any) => {
     const now = Date.now();
-    if (now - lastAlert < 3000) return;
 
     if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
       noFaceCount++;
-      if (noFaceCount > 5) {
+      if (noFaceCount > 5 && now - lastAlert > 3000) {
         lastAlert = now;
         noFaceCount = 0;
+        setSuspicious(true);
         onViolation({ type: "face_not_detected", severity: VIOLATION_SCORES.face_not_detected, description: "No face detected in camera frame", timestamp: new Date() });
       }
       return;
@@ -155,8 +209,11 @@ export function setupFaceMeshDetection(video: HTMLVideoElement, onViolation: (v:
     noFaceCount = 0;
 
     if (results.multiFaceLandmarks.length > 1) {
-      lastAlert = now;
-      onViolation({ type: "multiple_faces", severity: VIOLATION_SCORES.multiple_faces, description: "Multiple faces detected in frame", timestamp: new Date() });
+      if (now - lastAlert > 3000) {
+        lastAlert = now;
+        setSuspicious(true);
+        onViolation({ type: "multiple_faces", severity: VIOLATION_SCORES.multiple_faces, description: "Multiple faces detected in frame", timestamp: new Date() });
+      }
       return;
     }
 
@@ -186,29 +243,29 @@ export function setupFaceMeshDetection(video: HTMLVideoElement, onViolation: (v:
       const avgGaze = (leftGazeRatio + rightGazeRatio) / 2;
 
       if (avgGaze < 0.2) {
-        lastAlert = now;
-        onViolation({ type: "looking_left", severity: VIOLATION_SCORES.looking_left, description: "Student is looking to the left", timestamp: new Date() });
+        trackDeviation("looking_left");
         return;
       }
       if (avgGaze > 0.8) {
-        lastAlert = now;
-        onViolation({ type: "looking_right", severity: VIOLATION_SCORES.looking_right, description: "Student is looking to the right", timestamp: new Date() });
+        trackDeviation("looking_right");
         return;
       }
     }
 
     // Vertical check: if nose tip is too low, looking down
     if (noseTip.y > 0.7) {
-      lastAlert = now;
-      onViolation({ type: "looking_down", severity: VIOLATION_SCORES.looking_down, description: "Student appears to be looking down", timestamp: new Date() });
+      trackDeviation("looking_down");
       return;
     }
 
     // Head turned too far (nose tip off center)
     if (noseTip.x < 0.3 || noseTip.x > 0.7) {
-      lastAlert = now;
-      onViolation({ type: "looking_away", severity: VIOLATION_SCORES.looking_away, description: "Student's head is turned away from screen", timestamp: new Date() });
+      trackDeviation("looking_away");
+      return;
     }
+
+    // All clear — gaze is centered, head is centered
+    trackDeviation(null);
   };
 
   const startDetection = () => {
@@ -219,7 +276,8 @@ export function setupFaceMeshDetection(video: HTMLVideoElement, onViolation: (v:
       if (video.readyState >= 2) {
         await faceMesh.send({ image: video });
       }
-      if (running) setTimeout(sendFrame, 1000);
+      // Sample ~3x/sec so sustained-gaze (2.5s) can register reliably
+      if (running) setTimeout(sendFrame, 333);
     };
     sendFrame();
   };
