@@ -1,143 +1,54 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import LoadingSpinner from "@/components/ui/loading-spinner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { Layout } from "@/components/Layout";
-import Login from "./pages/Login";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { ThemeProvider } from "@/hooks/useTheme";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
-import Customers from "./pages/Customers";
-import CustomerDetail from "./pages/CustomerDetail";
-import Documents from "./pages/Documents";
-import Checklists from "./pages/Checklists";
-import Wiring from "./pages/Wiring";
-import Inspection from "./pages/Inspection";
-import Employees from "./pages/Employees";
-import MyProjects from "./pages/MyProjects";
-import ActivityLog from "./pages/ActivityLog";
+import ExamSetup from "./pages/ExamSetup";
+import ExamRoom from "./pages/ExamRoom";
+import ExamResult from "./pages/ExamResult";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
+  const { user, loading, role } = useAuth();
+  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
+  if (!user) return <Navigate to="/auth" />;
+  if (adminOnly && role !== "admin") return <Navigate to="/dashboard" />;
+  return <>{children}</>;
+}
+
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <LoadingSpinner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Dashboard />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/customers"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Customers />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/customers/:id"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <CustomerDetail />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/documents"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Documents />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/checklists"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Checklists />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/wiring"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Wiring />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/inspection"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Inspection />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/employees"
-              element={
-                <ProtectedRoute adminOnly>
-                  <Layout>
-                    <Employees />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/my-projects"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <MyProjects />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/activity-log"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <ActivityLog />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <ThemeToggle />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/exam-setup/:examId" element={<ProtectedRoute><ExamSetup /></ProtectedRoute>} />
+              <Route path="/exam/:examId" element={<ProtectedRoute><ExamRoom /></ProtectedRoute>} />
+              <Route path="/result/:sessionId" element={<ProtectedRoute><ExamResult /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;
