@@ -53,6 +53,7 @@ export default function ExamRoom() {
   const [currentWarningMsg, setCurrentWarningMsg] = useState("");
   const [terminated, setTerminated] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [camSuspicious, setCamSuspicious] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const warningCountRef = useRef(0);
@@ -76,7 +77,7 @@ export default function ExamRoom() {
     navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
       streamRef.current = s;
       if (videoRef.current) videoRef.current.srcObject = s;
-      cleanups.push(setupFaceMeshDetection(videoRef.current!, handleViolation));
+      cleanups.push(setupFaceMeshDetection(videoRef.current!, handleViolation, setCamSuspicious));
     });
 
     return () => { cleanups.forEach(c => c()); streamRef.current?.getTracks().forEach(t => t.stop()); };
@@ -223,9 +224,22 @@ export default function ExamRoom() {
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className={timeLeft < 300 ? "text-destructive font-bold" : "text-foreground"}>{formatTime(timeLeft)}</span>
           </div>
-          <div className="relative w-20 h-14 rounded-lg overflow-hidden border border-border">
+          <div
+            className={`relative w-20 h-14 rounded-lg overflow-hidden border-2 transition-all duration-300 ${
+              camSuspicious
+                ? "border-destructive shadow-[0_0_15px_3px_hsl(var(--destructive)/0.7)] animate-pulse"
+                : "border-border"
+            }`}
+          >
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-            <div className="absolute top-1 right-1"><Camera className="h-3 w-3 text-accent" /></div>
+            <div className="absolute top-1 right-1">
+              <Camera className={`h-3 w-3 ${camSuspicious ? "text-destructive" : "text-accent"}`} />
+            </div>
+            {camSuspicious && (
+              <div className="absolute bottom-0 left-0 right-0 bg-destructive/90 text-destructive-foreground text-[8px] text-center font-bold py-0.5">
+                LOOK AT SCREEN
+              </div>
+            )}
           </div>
         </div>
       </div>
