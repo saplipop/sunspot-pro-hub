@@ -17,6 +17,18 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Top-right Admin Panel button */}
+      <div className="absolute top-4 right-4 z-20">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate("/auth?role=admin")}
+          className="border-primary/50 hover:bg-primary/10"
+        >
+          <Shield className="h-4 w-4 mr-2" /> Admin Panel
+        </Button>
+      </div>
+
       {/* Hero */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/5" />
@@ -30,9 +42,12 @@ export default function Index() {
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in">
             Advanced AI-based cheating detection with real-time monitoring, face tracking, audio analysis, and automated risk scoring. Ensure exam integrity with ExamEye.
           </p>
-          <div className="flex gap-4 justify-center animate-fade-in">
-            <Button size="lg" className="gradient-primary text-primary-foreground glow-primary text-base px-8" onClick={() => navigate("/auth")}>
-              Sign In
+          <div className="flex flex-wrap gap-4 justify-center animate-fade-in">
+            <Button size="lg" className="gradient-primary text-primary-foreground glow-primary text-base px-8" onClick={() => navigate("/auth?role=student")}>
+              Student Sign In
+            </Button>
+            <Button size="lg" variant="outline" className="text-base px-8 border-primary/50" onClick={() => navigate("/auth?role=admin")}>
+              <Shield className="h-4 w-4 mr-2" /> Admin Sign In
             </Button>
           </div>
         </div>
