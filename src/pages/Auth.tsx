@@ -6,13 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Loader2, GraduationCap } from "lucide-react";
+import { Shield, Eye, EyeOff, Loader2, GraduationCap, User } from "lucide-react";
+
+// Admin signs in with a username instead of an email. Internally we map the
+// username to a synthetic email address stored in auth.users.
+const ADMIN_USERNAME_TO_EMAIL: Record<string, string> = {
+  "buddy@meaw": "buddy@meaw.local",
+};
 
 export default function Auth() {
   const [params] = useSearchParams();
   const initialRole = params.get("role") === "admin" ? "admin" : "student";
   const [loginRole, setLoginRole] = useState<"student" | "admin">(initialRole);
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -23,7 +30,12 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      let loginEmail = email;
+      if (loginRole === "admin") {
+        const key = username.trim().toLowerCase();
+        loginEmail = ADMIN_USERNAME_TO_EMAIL[key] ?? `${key.replace(/[^a-z0-9._-]/g, "_")}@meaw.local`;
+      }
+      const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
       if (error) throw error;
 
       // Verify the account matches the selected login role
@@ -101,10 +113,20 @@ export default function Auth() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required />
-              </div>
+              {isAdmin ? (
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input id="username" type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Buddy@Meaw" autoComplete="username" required className="pl-9" />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
