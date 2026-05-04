@@ -38,15 +38,17 @@ export default function Auth() {
       const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
       if (error) throw error;
 
-      // Verify the account matches the selected login role
+      // Verify the account has the selected login role. Query the exact role so
+      // accounts with historical duplicate role rows do not fail `.single()`.
       if (data.user) {
-        const { data: roleRow } = await supabase
+        const { data: roleRow, error: roleError } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", data.user.id)
-          .single();
-        const actualRole = (roleRow?.role as "student" | "admin") ?? "student";
-        if (actualRole !== loginRole) {
+          .eq("role", loginRole)
+          .maybeSingle();
+        if (roleError) throw roleError;
+        if (!roleRow) {
           await supabase.auth.signOut();
           throw new Error(
             loginRole === "admin"
@@ -54,7 +56,7 @@ export default function Auth() {
               : "This is an admin account. Use Admin Sign In instead.",
           );
         }
-        navigate(actualRole === "admin" ? "/admin" : "/dashboard");
+        navigate(loginRole === "admin" ? "/admin" : "/dashboard");
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
