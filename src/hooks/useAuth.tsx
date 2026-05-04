@@ -52,10 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function fetchUserData(userId: string) {
     const [roleRes, profileRes] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", userId).single(),
+      supabase.from("user_roles").select("role").eq("user_id", userId),
       supabase.from("profiles").select("full_name, email").eq("id", userId).single(),
     ]);
-    setRole((roleRes.data?.role as "student" | "admin") ?? "student");
+    const roles = (roleRes.data ?? []).map(row => row.role as "student" | "admin");
+    setRole(roles.includes("admin") ? "admin" : "student");
     setProfile(profileRes.data ?? null);
     setLoading(false);
   }
