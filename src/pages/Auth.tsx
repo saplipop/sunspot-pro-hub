@@ -22,7 +22,7 @@ export default function Auth() {
   const navigate = useNavigate();
 
   const ensureAdminRole = async () => {
-    const { data, error } = await supabase.rpc("bootstrap_exam_admin");
+    const { data, error } = await supabase.rpc("bootstrap_exam_admin" as never);
     if (error) throw error;
     if (!data) throw new Error("This account is not allowed to become an admin.");
   };
