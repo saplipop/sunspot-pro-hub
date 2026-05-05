@@ -6,62 +6,91 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Loader2, GraduationCap, User } from "lucide-react";
+import { Shield, Eye, EyeOff, Loader2, GraduationCap } from "lucide-react";
 
-// Admin signs in with a username instead of an email. Internally we map the
-// username to a synthetic email address stored in auth.users.
-const ADMIN_USERNAME_TO_EMAIL: Record<string, string> = {
-  "buddy@meaw": "buddy@meaw.local",
-};
+const ADMIN_EMAIL = "admin@exameye.com";
 
 export default function Auth() {
   const [params] = useSearchParams();
   const initialRole = params.get("role") === "admin" ? "admin" : "student";
   const [loginRole, setLoginRole] = useState<"student" | "admin">(initialRole);
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<"signin" | "signup" | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const ensureAdminRole = async () => {
+    const { data, error } = await supabase.rpc("bootstrap_exam_admin" as never);
+    if (error) throw error;
+    if (!data) throw new Error("This account is not allowed to become an admin.");
+  };
+
+  const verifySelectedRole = async (userId: string) => {
+    const { data: roleRow, error: roleError } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", loginRole)
+      .maybeSingle();
+    if (roleError) throw roleError;
+    if (!roleRow) {
+      await supabase.auth.signOut();
+      throw new Error(
+        loginRole === "admin"
+          ? "This account is not an admin. Use Sign Up as Admin once, then sign in again."
+          : "This is an admin account. Use Admin Sign In instead.",
+      );
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setLoadingAction("signin");
     try {
-      let loginEmail = email;
-      if (loginRole === "admin") {
-        const key = username.trim().toLowerCase();
-        loginEmail = ADMIN_USERNAME_TO_EMAIL[key] ?? `${key.replace(/[^a-z0-9._-]/g, "_")}@meaw.local`;
-      }
+      const loginEmail = email.trim().toLowerCase();
       const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
       if (error) throw error;
 
-      // Verify the account has the selected login role. Query the exact role so
-      // accounts with historical duplicate role rows do not fail `.single()`.
       if (data.user) {
-        const { data: roleRow, error: roleError } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", data.user.id)
-          .eq("role", loginRole)
-          .maybeSingle();
-        if (roleError) throw roleError;
-        if (!roleRow) {
-          await supabase.auth.signOut();
-          throw new Error(
-            loginRole === "admin"
-              ? "This account is not an admin. Use Student Sign In instead."
-              : "This is an admin account. Use Admin Sign In instead.",
-          );
-        }
+        if (loginRole === "admin") await ensureAdminRole();
+        await verifySelectedRole(data.user.id);
         navigate(loginRole === "admin" ? "/admin" : "/dashboard");
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
-      setLoading(false);
+      setLoadingAction(null);
+    }
+  };
+
+  const handleAdminSignUp = async () => {
+    const adminEmail = email.trim().toLowerCase();
+    if (adminEmail !== ADMIN_EMAIL) {
+      toast({ title: "Use the admin email", description: `Enter ${ADMIN_EMAIL} to create the admin account.`, variant: "destructive" });
+      return;
+    }
+
+    setLoadingAction("signup");
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: adminEmail,
+        password,
+        options: { data: { full_name: "ExamEye Admin" } },
+      });
+      if (error) throw error;
+      if (!data.session || !data.user) {
+        toast({ title: "Admin account created", description: "Now sign in with the same admin credentials." });
+        return;
+      }
+      await ensureAdminRole();
+      await verifySelectedRole(data.user.id);
+      navigate("/admin");
+    } catch (err: any) {
+      toast({ title: "Signup failed", description: err.message, variant: "destructive" });
+    } finally {
+      setLoadingAction(null);
     }
   };
 
@@ -83,11 +112,11 @@ export default function Auth() {
         <Card className="glass-card">
           <CardHeader className="text-center">
             <CardTitle className="text-xl">
-              {isAdmin ? "Admin Sign In" : "Student Sign In"}
+              {isAdmin ? "Admin Login" : "Student Sign In"}
             </CardTitle>
             <CardDescription>
               {isAdmin
-                ? "Restricted access for exam administrators"
+                ? "Sign in with your admin credentials"
                 : "Use credentials provided by your administrator"}
             </CardDescription>
           </CardHeader>
@@ -117,11 +146,8 @@ export default function Auth() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {isAdmin ? (
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="username" type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Buddy@Meaw" autoComplete="username" required className="pl-9" />
-                  </div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={ADMIN_EMAIL} autoComplete="email" required />
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -138,10 +164,16 @@ export default function Auth() {
                   </button>
                 </div>
               </div>
-              <Button type="submit" className="w-full gradient-primary text-primary-foreground" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" className="w-full gradient-primary text-primary-foreground" disabled={!!loadingAction}>
+                {loadingAction === "signin" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Sign In as {isAdmin ? "Admin" : "Student"}
               </Button>
+              {isAdmin && (
+                <Button type="button" variant="outline" className="w-full border-primary/50" onClick={handleAdminSignUp} disabled={!!loadingAction}>
+                  {loadingAction === "signup" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Sign Up as Admin
+                </Button>
+              )}
             </form>
             <p className="mt-4 text-center text-xs text-muted-foreground">
               {isAdmin
